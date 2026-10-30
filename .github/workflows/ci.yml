@@ -2,33 +2,35 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
-    strategy:
-      matrix:
-        service: [database, backend, frontend]
-
     steps:
-      - name: Скачать код репозитория
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Войти в реестр ghcr.io
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
-      - name: Собрать и отправить образ
+      - name: Build and push images
         run: |
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE=${{ env.REGISTRY }}/$OWNER/studentclass-${{ matrix.service }}:latest
-          docker build -t $IMAGE ./${{ matrix.service }}
-          docker push $IMAGE
+          OWNER=${{ github.repository_owner }}
+          OWNER=${OWNER,,}
+
+          docker build -t ${{ env.REGISTRY }}/$OWNER/studentclass-db:latest ./database
+          docker push ${{ env.REGISTRY }}/$OWNER/studentclass-db:latest
+
+          docker build -t ${{ env.REGISTRY }}/$OWNER/studentclass-backend:latest ./backend
+          docker push ${{ env.REGISTRY }}/$OWNER/studentclass-backend:latest
+
+          docker build -t ${{ env.REGISTRY }}/$OWNER/studentclass-frontend:latest ./frontend
+          docker push ${{ env.REGISTRY }}/$OWNER/studentclass-frontend:latest
